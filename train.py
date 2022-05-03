@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 from scipy.stats import kurtosis, skew
 from utils import qmf_filter, getCentralPatch
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA 
+import pickle
 
 class Train:
     def __init__(self, n, train_dir):
@@ -12,7 +14,10 @@ class Train:
 
         self.i = 0
 
-    def extractFeaturesFromImg(self, img):
+    def extractFeaturesFromImg(self, img, debug = False): 
+        if debug:
+            print(f"img shape = {img.shape}")
+
         features = np.zeros(72*(self.n - 1))
 
         H, V, D = [], [], []
@@ -23,6 +28,9 @@ class Train:
             A = img[:, :, i]
             for j in range(self.n):
                 A, (h, v, d) = qmf_filter(A)
+
+                if debug:
+                    print(f"h,v,d = {h.shape}, {v.shape}, {d.shape}")
 
                 Hi.append(h)
                 Vi.append(v)
@@ -40,6 +48,7 @@ class Train:
             H.append(Hi)
             V.append(Vi)
             D.append(Di)
+
 
         for j in range(3): 
             for i in range(self.n - 1):
@@ -134,23 +143,52 @@ class Train:
         return np.array([arr.mean(), arr.var(), skew(arr, None), kurtosis(arr, None)])
 
     def extractFeatures(self):
-        dataset = os.listdir(self.train_dir)
-        
-        self.nt = len(dataset)
+        pg_dataset = os.listdir(os.path.join(self.train_dir, "pg"))
+        pr_dataset = os.listdir(os.path.join(self.train_dir, "pr"))
+
+        self.nt = len(pg_dataset) + len(pr_dataset)
         self.features = np.zeros((self.nt, 72*(self.n-1)))
+        self.clss = np.zeros(self.nt)
         
-        for data in dataset:
-            img = cv2.imread(os.path.join(self.train_dir, data))
+        for data in pg_dataset:
+            img = cv2.imread(os.path.join(os.path.join(self.train_dir, "pg"), data))
+            imgPatch = getCentralPatch(img, 256, 256)
+
+            try:
+                self.extractFeaturesFromImg(imgPatch)
+            except:
+                print(data)
+                exit(0)
+
+            self.clss[self.i] = 1
+            
+            self.i += 1
+
+            print(f"Done {self.i}/{self.nt}")
+
+        for data in pr_dataset:
+            img = cv2.imread(os.path.join(os.path.join(self.train_dir, "pr"), data))
             imgPatch = getCentralPatch(img, 256, 256)
 
             self.extractFeaturesFromImg(imgPatch)
+            self.clss[self.i] = 2
+            
             self.i += 1
 
-            print(f"Done {self.i}")
+            print(f"Done {self.i}/{self.nt}")
 
     def train(self):
-        pass
+        self.extractFeatures() 
+
+        print(self.features)
+        clf = LDA()
+        clf.fit(self.features, self.clss)
+
+        with open("models/model.pkl", "wb") as f:
+            pickle.dump(clf, f)
+
+        print("Model saved")
 
 
 trainer = Train(4, "./train/")
-trainer.extractFeatures()
+trainer.train()

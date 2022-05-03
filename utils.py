@@ -7,8 +7,8 @@ def getCentralPatch(img, width, height):
 
     left = (w - width)//2
     top = (h - height)//2
-
-    return img[left : left + width, top : top + height, :]
+    
+    return img[top : top + width, left : left + height, :]
 
 dec_lo = [0.02807382, -0.060944743, -0.073386624, 0.41472545, 0.7973934, 0.4147245, -0.073386624, -0.060944743, 0.02807382]
 dec_hi = pywt.qmf(dec_lo)
