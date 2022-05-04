@@ -154,11 +154,7 @@ class Train:
             img = cv2.imread(os.path.join(os.path.join(self.train_dir, "pg"), data))
             imgPatch = getCentralPatch(img, 256, 256)
 
-            try:
-                self.extractFeaturesFromImg(imgPatch)
-            except:
-                print(data)
-                exit(0)
+            self.extractFeaturesFromImg(imgPatch)
 
             self.clss[self.i] = 1
             
@@ -180,14 +176,19 @@ class Train:
     def train(self):
         self.extractFeatures() 
 
-        print(self.features)
+        #with open("features", "wb") as f:
+        #    pickle.dump(self.features, f)
+
+        self.features = np.nan_to_num(self.features, nan=0.0, posinf=0.0, neginf=0.0)
+
         clf = LDA()
         clf.fit(self.features, self.clss)
 
         with open("models/model.pkl", "wb") as f:
             pickle.dump(clf, f)
 
-        print("Model saved")
+        print(f"Model saved with training accuracy {clf.score(self.features, self.clss)*100}%")
+
 
 
 trainer = Train(4, "./train/")
