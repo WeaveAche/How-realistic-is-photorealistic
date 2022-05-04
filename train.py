@@ -61,5 +61,5 @@ class Train:
 
 
 
-trainer = Train(4, "./train/")
+trainer = Train(4, "./dataset/train/")
 trainer.train()
